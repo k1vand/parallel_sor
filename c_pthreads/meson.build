@@ -1,8 +1,13 @@
-project('my_project', 'c')
+project('my_project', 'c',  default_options: ['buildtype=debug', 'optimization=0', 'warning_level=3'])
 
 sources = [
     'c_pthreads.c'
 ]
-deps = [dependency('threads')]
+
+cc = meson.get_compiler('c')
+m_dep = cc.find_library('m', required : false)
+
+deps = [dependency('threads'),
+        m_dep]
 
 executable('sor', sources, dependencies: deps)
