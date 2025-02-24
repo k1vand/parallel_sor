@@ -35,7 +35,6 @@ struct  tctx_s
 {
     struct global_ctx_s *gctx;
     uint32_t idx;
-    atomic_uint i;
 };
 
 inline int next_X(int i)
