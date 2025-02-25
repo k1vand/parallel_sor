@@ -37,15 +37,6 @@ struct  tctx_s
     uint32_t idx;
 };
 
-inline int next_X(int i)
-{
-    return i % 2;
-}
-inline int prev_X(int i)
-{
-    return (i + 1) % 2;
-}
-
 void *worker(struct tctx_s * tctx) {
     struct global_ctx_s *gctx = tctx->gctx;
     int *b = gctx->b;
@@ -82,7 +73,7 @@ void *worker(struct tctx_s * tctx) {
             
             new_part = gctx->w * (new_part / (double) A[row][row]);
             atomic_store(&X[row], old_part + new_part);
-            atomic_store(&gctx->e[row], abs(old_X - X[row]));
+            atomic_store(&gctx->e[row], fabs(old_X - X[row]));
 
             atomic_fetch_add(&gctx->Xi[row], 1);
         }
