@@ -57,7 +57,7 @@ void *worker(struct tctx_s * tctx) {
             double old_part = (1 - gctx->w) * old_X;
             
             double new_part = b[row];
-            for (int i = gctx->n; i > row; i--)
+            for (int i = gctx->n - 1; i > row; i--)
             {
                 new_part -= A[row][i]*X[i];    
             }
@@ -171,7 +171,6 @@ int main() {
     {
         gctx.tctxs[i].gctx = &gctx; 
         gctx.tctxs[i].idx = i;
-        gctx.tctxs[i].i = 0;
 
         pthread_create(&gctx.threads[i], NULL, worker, &gctx.tctxs[i]);
     }
