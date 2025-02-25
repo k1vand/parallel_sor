@@ -145,7 +145,7 @@ void init_gctx(struct global_ctx_s *gctx)
 
 int main() {
     struct global_ctx_s gctx = {
-        .threads_num = 2,
+        .threads_num = 4,
         .n = 8,
         .max_e = 0.0000001,
         .i = 1,
@@ -190,7 +190,7 @@ int main() {
                 cur_max_e = atomic_load(&gctx.e[i]);
         }
 
-        if(cur_max_e < gctx.max_e) {
+        if(cur_max_e < gctx.max_e || gctx.i >= ITERATIONS_MAX) {
             printf("Get result for %d iterations, max e %g\n", gctx.i, cur_max_e);
             atomic_store(&gctx.i, -1);
             break;
