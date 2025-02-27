@@ -6,6 +6,7 @@ import numpy as np
 
 PARAM_ABS_MAX = 100
 E_TAG = 1
+GI_TAG = 2
 
 class SORTask:
 
@@ -33,7 +34,7 @@ class SORTask:
         self.X = np.zeros(self.n, dtype=float)
         self.e = np.zeros(self.n, dtype=float)
 
-        self.i = 1
+        self.i = np.ones(self.n, dtype=int)
 
 def sor(t: SORTask):
     comm = MPI.COMM_WORLD
@@ -44,7 +45,8 @@ def sor(t: SORTask):
 
     print(f"Worker {rank} start, own rows num {own_rows_num}")
 
-    while t.i > 0:
+    while t.i[rank] > 0:
+        print(f"[{rank}] iteration №{t.i[rank]}")
         for row_i in range(0, own_rows_num):
             row =  rank + size * row_i
             old_X = t.X[row]
@@ -54,27 +56,32 @@ def sor(t: SORTask):
             for i in range(row  + 1, t.n):
                 spart -= t.A[row][i] * t.X[i]
 
-            for i in range(0, row - 1):
-                row_owner_rank =  i % size
-                if row_owner_rank != rank:
-                    comm.Bcast(t.X[i: i+1], row_owner_rank)
-                
+            for i in range(0, row):
+                if row - i < size:  
+                    row_owner_rank =  i % size
+                    if row_owner_rank != rank:
+                        print(f"[{rank}] Get X{i} from {row_owner_rank}")
+                        comm.Bcast(t.X[i: i+1], row_owner_rank)
+
                 spart -= t.A[row][i] * t.X[i]
             
             spart = t.w * (spart / t.A[row][row])
             t.X[row] = fpart + spart
 
+            print(f"[{rank}] Cast x{row}: {t.X[row]}")
             comm.Bcast(t.X[row:row + 1], rank)
-            print(f"Cast x{row}: {t.X[row]}")
             t.e[row] = abs(old_X - t.X[row])
 
             if rank != 0:
+                print(f"[{rank}] Send e{row}: {t.e[row]}")
                 comm.Isend(t.e[row: row+1], 0, E_TAG)
-                print(f"Send e{row}: {t.e[row]}")
 
-        last_row_owner = (t.n - 1) % size
-        if rank != last_row_owner:
-            comm.Bcast(t.X[t.n - 1: t.n], last_row_owner)
+            # Get the last X's that are not ours
+            if row_i + 1 == own_rows_num:
+                for i in range(row + 1, t.n):
+                    row_owner = i % size
+                    print(f"[{rank}] Get last x{i} from {row_owner}")
+                    comm.Bcast(t.X[i: i+1], row_owner)
         
         if rank == 0:
             for i in range(0, t.n):
@@ -84,14 +91,18 @@ def sor(t: SORTask):
             cur_max_e = max(t.e)
 
             if cur_max_e <= t.max_e:
-                print(f"Get result for {t.i} iterations, max e {cur_max_e}")
-                t.i = -1
+                print(f"Get result for {t.i[rank]} iterations, max e {cur_max_e}")
+                t.i[rank] = -1
             else:
                 print(t.X)
                 print(cur_max_e)
 
-                t.i += 1
-        comm.Bcast(t.i, 0)
+                t.i[rank] += 1
+            
+            # for i in range(1, size):
+            #     comm.Send(t.i, i, GI_TAG)
+        
+        comm.Bcast(t.i[rank: rank + 1], 0)
 
         
 
@@ -116,6 +127,9 @@ def main():
         print(task.b)
 
     sor(task)
+
+    if rank == 0:
+        print(task.X)
 
 if __name__ == "__main__":
     main()
