@@ -132,7 +132,8 @@ void populate_linear_system(struct global_ctx_s *gctx) {
     for (int i = 0; i < gctx->n; i++)
     {    
         gctx->b[i]=  rand() % (2 * PARAM_ABS_MAX + 1) - PARAM_ABS_MAX;
-        gctx->A[i][i] =  rand() % (2 * PARAM_ABS_MAX + 1) - PARAM_ABS_MAX;
+        while(gctx->A[i][i] == 0)
+            gctx->A[i][i] =  rand() % (2 * PARAM_ABS_MAX + 1) - PARAM_ABS_MAX;
         new_max = (uint32_t) (abs(gctx->A[i][i]) / (double) (gctx->n - 1) - 1);
 
         for (int j = 0; j < gctx->n; j++)

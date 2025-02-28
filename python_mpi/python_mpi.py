@@ -15,7 +15,8 @@ class SORTask:
 
         for i in range(self.n):
             self.b[i] = random.randint(-PARAM_ABS_MAX, PARAM_ABS_MAX)
-            self.A[i][i] = random.randint(-PARAM_ABS_MAX, PARAM_ABS_MAX)
+            while self.A[i][i] == 0:
+                self.A[i][i] = random.randint(-PARAM_ABS_MAX, PARAM_ABS_MAX)
 
             new_max = int(abs(self.A[i][i]) / (self.n - 1) - 1) 
 
