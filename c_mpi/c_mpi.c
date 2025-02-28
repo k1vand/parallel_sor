@@ -14,10 +14,9 @@
 #include <unistd.h>
 
 #define PARAM_ABS_MAX 100
-#define ITERATIONS_MAX 10000
+#define ITERATIONS_MAX 1000
 
 #define MPI_SEND_E_TAG 1000
-#define MPI_SEND_X_TAG 2000
 
 #define MPI_WAIT_TIMEOUT 5
 
@@ -48,9 +47,7 @@ struct global_ctx_s {
     double max_e;
     double w;
 
-    int workers_num;
-
-    MPI_Comm MPI_COMM_SPLITTED;
+    int run;
 };
 
 void _debug(const char *format, ...) {
@@ -67,89 +64,104 @@ void _debug(const char *format, ...) {
     va_end(args);
 }
 
-void worker(struct global_ctx_s *gctx) {
+double sor(struct global_ctx_s *gctx, double *solution_e) {
+    int ret = 0;
     int *b = gctx->b;
     int *A = gctx->A;
     double *X = gctx->X;
-    MPI_Request *x_reqs;
-    int size;
-    int idx;
-    int global_idx;
+    MPI_Request e_req;
+    int size, rank, own_rows_num;
 
-    MPI_Comm_rank(gctx->MPI_COMM_SPLITTED, &idx);
-    MPI_Comm_rank(MPI_COMM_WORLD, &global_idx);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-    int own_rows_num = gctx->n / gctx->workers_num +
-                       (idx + 1 <= gctx->n % gctx->workers_num ? 1 : 0);
-    x_reqs = calloc(sizeof(*x_reqs), gctx->n);
-    for (int i = 0; i < gctx->n; i++) {
-        x_reqs[i] = MPI_REQUEST_NULL;
-    }
+    own_rows_num = gctx->n / size + (rank + 1 <= gctx->n % size ? 1 : 0);
+    printf("Workder %d/%d start, own_rows_num: %d\n", rank + 1, size,
+           own_rows_num);
 
-    printf("Workder %d/%d start, own_rows_num: %d\n", idx + 1,
-           gctx->workers_num, own_rows_num);
-    while (gctx->i > 0) {
+    int row;
+    double old_X, fpart, spart;
+    while (gctx->run) {
         for (int row_i = 0; row_i < own_rows_num; row_i++) {
-            int row = idx + gctx->workers_num * row_i;
+            row = rank + size * row_i;
 
-            double old_X = X[row];
-            double fpart = (1 - gctx->w) * old_X;
+            old_X = X[row];
+            fpart = (1 - gctx->w) * old_X;
 
-            double spart = b[row];
-            for (int i = gctx->n - 1; i > row; i--) {
+            spart = b[row];
+            for (int i = row + 1; i < gctx->n; i++) {
                 spart -= A[row * gctx->n + i] * X[i];
             }
 
-            for (int i = row - 1; i >= 0; i--) {
-                int source_idx = i % gctx->workers_num + 1;
-
-                if (source_idx != global_idx) {
-                    MPI_Status status;
-                    MPI_Ibcast(&X[i], 1, MPI_DOUBLE, source_idx, MPI_COMM_WORLD,
-                               &x_reqs[i]);
-
-                    MPI_WAIT_DEBUG(&x_reqs[i], &status, "before fetch");
-                    _debug("Fetch x%d %g from %d\n", i, X[i], source_idx);
-                    x_reqs[i] = MPI_REQUEST_NULL;
+            for (int i = 0; i < row; i++) {
+                if (row - i < size) {
+                    int row_owner_rank = i % size;
+                    if (row_owner_rank != rank) {
+                        MPI_Bcast(&gctx->X[i], 1, MPI_DOUBLE, row_owner_rank,
+                                  MPI_COMM_WORLD);
+                        _debug("Get x%d %g from %d", i, gctx->X[i],
+                               row_owner_rank);
+                    }
                 }
+
                 spart -= A[row * gctx->n + i] * X[i];
             }
 
             spart = gctx->w * (spart / (double)A[row * gctx->n + row]);
             X[row] = fpart + spart;
 
-            if (x_reqs[row] != MPI_REQUEST_NULL) {
-                MPI_WAIT_DEBUG(&x_reqs[row], MPI_STATUS_IGNORE,
-                               "on sended earlier");
-                x_reqs[row] = MPI_REQUEST_NULL;
-            }
-
-            MPI_Ibcast(&X[row], 1, MPI_DOUBLE, global_idx, MPI_COMM_WORLD,
-                       &x_reqs[row]);
+            MPI_Bcast(&X[row], 1, MPI_DOUBLE, rank, MPI_COMM_WORLD);
 
             gctx->e[row] = fabs(old_X - X[row]);
+            if (rank != 0) {
+                MPI_Isend(&gctx->e[row], 1, MPI_DOUBLE, 0, MPI_SEND_E_TAG,
+                          MPI_COMM_WORLD, &e_req);
+            }
 
-            MPI_Send(&gctx->e[row], 1, MPI_DOUBLE, 0, row, MPI_COMM_WORLD);
+            if (row_i + 1 == own_rows_num) {
+                for (int i = row + 1; i < gctx->n; i++) {
+                    MPI_Bcast(&gctx->X[i], 1, MPI_DOUBLE, i % size,
+                              MPI_COMM_WORLD);
+                    _debug("Get last x%d %g from %d", i, gctx->X[i], i % size);
+                }
+            }
         }
 
-        int last_row_idx = (gctx->n - 1) % gctx->workers_num + 1;
-        if (global_idx != last_row_idx) {
-            MPI_Ibcast(&X[gctx->n - 1], 1, MPI_DOUBLE, last_row_idx,
-                       MPI_COMM_WORLD, &x_reqs[gctx->n - 1]);
-            MPI_WAIT_DEBUG(&x_reqs[gctx->n - 1], MPI_STATUS_IGNORE,
-                           "wait for last X");
-            _debug("Fetch x%d %g from %d\n", gctx->n - 1, X[gctx->n - 1], last_row_idx);
+        if (rank == 0) {
+            double cur_e_max = 0;
+            for (int i = 0; i < gctx->n; i++) {
+                int row_owner = i % size;
+                if (row_owner != rank) {
+                    MPI_Irecv(&gctx->e[i], 1, MPI_DOUBLE, row_owner,
+                              MPI_SEND_E_TAG, MPI_COMM_WORLD, &e_req);
+                    MPI_Wait(&e_req, MPI_STATUS_IGNORE);
+                }
+
+                if (cur_e_max < gctx->e[i]) cur_e_max = gctx->e[i];
+            }
+
+            if (gctx->i >= ITERATIONS_MAX) {
+                ret = -1;
+                gctx->run = 0;
+            } else if (cur_e_max <= gctx->max_e) {
+                gctx->run = 0;
+                *solution_e = cur_e_max;
+            } else {
+                gctx->i++;
+                printf("X: \n");
+                for (int i = 0; i < gctx->n; i++) {
+                    printf("%.2f ", gctx->X[i]);
+                }
+                printf("\n");
+            }
         }
 
-        MPI_Request gi_req;
-        MPI_Ibcast(&gctx->i, 1, MPI_INT32_T, 0, MPI_COMM_WORLD, &gi_req);
-        MPI_WAIT_DEBUG(&gi_req, MPI_STATUS_IGNORE, "wait for new gi");
-
-        _debug("Iteration: %d", gctx->i);
+        MPI_Bcast(&gctx->run, 1, MPI_INT, 0, MPI_COMM_WORLD);
+        if (rank == 0) _debug("Iteration: %d", gctx->i);
     }
 
-    printf("Worker %d is finished\n", idx);
+    printf("Worker %d is finished\n", rank);
+    return ret;
 }
 
 int count_digits(int n) {
@@ -165,8 +177,10 @@ void populate_linear_system(struct global_ctx_s *gctx) {
     srand(1234567890);
     for (int i = 0; i < gctx->n; i++) {
         gctx->b[i] = rand() % (2 * PARAM_ABS_MAX + 1) - PARAM_ABS_MAX;
-        gctx->A[i * gctx->n + i] =
-            rand() % (2 * PARAM_ABS_MAX + 1) - PARAM_ABS_MAX;
+        gctx->A[i * gctx->n + i] = 0;
+        while (gctx->A[i * gctx->n + i] == 0)
+            gctx->A[i * gctx->n + i] =
+                rand() % (2 * PARAM_ABS_MAX + 1) - PARAM_ABS_MAX;
         new_max =
             (uint32_t)(abs(gctx->A[i * gctx->n + i]) / (double)(gctx->n - 1) -
                        1);
@@ -202,18 +216,15 @@ int init_gctx(struct global_ctx_s *gctx) {
 }
 
 int main(int argc, char **argv) {
-    int ret;
-    int rank, size;
+    int ret, rank, size;
+    double cur_max_e;
 
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-    struct global_ctx_s gctx = {.n = 4, .max_e = 0.0000001, .i = 1, .w = 1.5};
-
-    MPI_Comm_split(MPI_COMM_WORLD, (rank == 0) ? 0 : 1, rank,
-                   &gctx.MPI_COMM_SPLITTED);
-    gctx.workers_num = size - 1;
+    struct global_ctx_s gctx = {
+        .n = 8, .max_e = 0.0000001, .i = 1, .w = 1.5, .run = 1};
 
     ret = init_gctx(&gctx);
     if (ret < 0) return ret;
@@ -237,59 +248,21 @@ int main(int argc, char **argv) {
         printf("max e = %g, w = %g\n", gctx.max_e, gctx.w);
     }
 
-    if (rank != 0) {
-        worker(&gctx);
-    } else {
-        MPI_Request request, gi_req = MPI_REQUEST_NULL;
-        MPI_Status status;
-        while (true) {
-            double cur_max_e = DBL_MIN;
-
+    ret = sor(&gctx, &cur_max_e);
+    if (rank == 0) {
+        if (ret == 0) {
+            printf("Get result for %d iterations, max e %g\n", gctx.i,
+                   cur_max_e);
+            printf("X: \n");
             for (int i = 0; i < gctx.n; i++) {
-                int source = i % gctx.workers_num + 1;
-                MPI_Ibcast(&gctx.X[i], 1, MPI_DOUBLE, source, MPI_COMM_WORLD,
-                           &request);
-                MPI_WAIT_DEBUG(&request, MPI_STATUS_IGNORE, "for new X");
-                _debug("Get X%d from %d: %g", i, source, gctx.X[i]);
-
-                MPI_Recv(&gctx.e[i], 1, MPI_DOUBLE, source, i, MPI_COMM_WORLD,
-                         &status);
-                _debug("Get e%d from %d: %g", i, source, gctx.e[i]);
-
-                if (cur_max_e < gctx.e[i]) cur_max_e = gctx.e[i];
+                printf("%.2f ", gctx.X[i]);
             }
-
-            if (gi_req != MPI_REQUEST_NULL)
-                MPI_WAIT_DEBUG(&gi_req, MPI_STATUS_IGNORE, "for sending gi");
-
-            if (cur_max_e < gctx.max_e || gctx.i >= ITERATIONS_MAX) {
-                printf("Get result for %d iterations, max e %g\n", gctx.i,
-                       cur_max_e);
-                gctx.i = -1;
-                MPI_Ibcast(&gctx.i, 1, MPI_INT32_T, 0, MPI_COMM_WORLD, &gi_req);
-                break;
-            } else {
-                printf("X: \n");
-                for (int i = 0; i < gctx.n; i++) {
-                    printf("%.2f ", gctx.X[i]);
-                }
-                printf("\n");
-                printf("e: %g\n", cur_max_e);
-
-                gctx.i += 1;
-                MPI_Ibcast(&gctx.i, 1, MPI_INT32_T, 0, MPI_COMM_WORLD, &gi_req);
-                MPI_WAIT_DEBUG(&gi_req, MPI_STATUS_IGNORE, "for sending gi");
-            }
+            printf("\n");
+        } else {
+            printf("Reach limit of iterations: %d", ITERATIONS_MAX);
         }
-
-        printf("X: \n");
-        for (int i = 0; i < gctx.n; i++) {
-            printf("%.2f ", gctx.X[i]);
-        }
-        printf("\n");
     }
 
-    MPI_Barrier(MPI_COMM_WORLD);
     MPI_Finalize();
     return 0;
 }
