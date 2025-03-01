@@ -2,6 +2,8 @@ import os
 import subprocess
 import random
 import numpy as np
+from string import Template
+from typing import Dict, Union, List
 
 PARAM_ABS_MAX = 100
 
@@ -11,8 +13,21 @@ e = 0.0001
 ns = [3, 6, 12] # A sizes
 instance_nums = [1, 2, 4] # threads / procs num
 
+
 def module_path():
     return os.path.dirname(os.path.realpath(__file__))
+
+algs_paths = {
+        "c_pthread": os.path.join(module_path(), "c_pthreads", "build", "sor"),
+        "c_omp": os.path.join(module_path(), "c_omp", "build", "sor")
+    }
+
+algs: List[Dict[str, Union[str,Template]]] = [
+    # {"name": "c_pthreads", "cmd": Template(f"{algs_paths['c_pthread']} -c $linsys_path -o $out_path -n $n -e $e -w $w")},
+    {"name": "c_omp", "cmd": Template(f"{algs_paths['c_omp']} -c $linsys_path -o $out_path -n $n -e $e -w $w")}
+]
+
+
 
 def gen_linear_system(n: int):
     A = np.zeros((n, n), dtype=int)
@@ -34,10 +49,7 @@ def main():
     linsys_dir = os.path.join(module_path(), "linsys")
     outs_dir = os.path.join(module_path(), "outs")
     
-    algs_paths = {
-        "c_pthread": os.path.join(module_path(), "c_pthreads", "build", "sor")
-    }
-
+    
     os.makedirs(linsys_dir, exist_ok=True)
     os.makedirs(outs_dir, exist_ok=True)
 
@@ -56,24 +68,27 @@ def main():
                 f.write(" ".join(map(str, Ab[j].tolist())) + "\n")
         
         print(f"A|b = \n{Ab}")
-        print(f"n = {n}")
+        print(f"n = {n}\n")
         for instance_num in instance_nums:
-            print(f"instance num = {instance_num}")
+            print(f"instance num = {instance_num}\n")
 
-            out_path = os.path.join(outs_dir, f"c_pthreads_{n}_{instance_num}.txt")
-            cmd = [algs_paths['c_pthread'], "-c", linsys_path, "-o", out_path, "-n", n, "-e", e, "-w", w]
-            result = subprocess.run(map(str, cmd), stdout=subprocess.DEVNULL)
-            
-            if result.returncode == 0:
-                with open(out_path, "r") as f:
-                    solution = [float(x) for x in f.readline().split()]
-                    print(f"my solution \n{solution}")
-                    print(f"true solution \n{linsys[i][2].tolist()}")
+            for alg in algs:
+                print(f"Alg: {alg['name']}")
 
-                    l2_norm = np.linalg.norm(solution - linsys[i][2], ord=2)
-                    relative_error = l2_norm / np.linalg.norm(linsys[i][2], ord=2)
+                out_path = os.path.join(outs_dir, f"{alg['name']}_{n}_{instance_num}.txt")
+                cmd = alg["cmd"].substitute(linsys_path = linsys_path, out_path=out_path, n=n, e=e, w=w).split()
+                result = subprocess.run(map(str, cmd), stdout=subprocess.DEVNULL)
+                
+                if result.returncode == 0:
+                    with open(out_path, "r") as f:
+                        solution = [float(x) for x in f.readline().split()]
+                        print(f"{alg['name']} solution \n{solution}")
+                        print(f"true solution \n{linsys[i][2].tolist()}")
 
-                    print(f"l2_norm = {l2_norm}, relative_error = {relative_error}\n")
+                        l2_norm = np.linalg.norm(solution - linsys[i][2], ord=2)
+                        relative_error = l2_norm / np.linalg.norm(linsys[i][2], ord=2)
+
+                        print(f"l2_norm = {l2_norm}, relative_error = {relative_error}\n")
 
 
 if __name__ == "__main__":
