@@ -22,13 +22,14 @@ algs_paths = {
         "c_pthread": os.path.join(module_path(), "c_pthreads", "build", "sor"),
         "c_omp": os.path.join(module_path(), "c_omp", "build", "sor"),
         "c_mpi": os.path.join(module_path(), "c_mpi", "build", "sor"),
-        "c_mpi": os.path.join(module_path(), "c_mpi", "build", "sor"),
+        "python_mpi": os.path.join(module_path(), "python_mpi", "python_mpi.py"),
     }
 
 algs: List[Dict[str, Union[str,Template]]] = [
-    {"name": "c_pthreads", "cmd": Template(f"{algs_paths['c_pthread']} -c $linsys_path -o $out_path -n $n -t $t -e $e -w $w")},
-    {"name": "c_omp", "cmd": Template(f"{algs_paths['c_omp']} -c $linsys_path -o $out_path -n $n -t $t -e $e -w $w")},
-    {"name": "c_mpi", "cmd": Template(f"mpirun --use-hwthread-cpus -c $t {algs_paths['c_mpi']} -c $linsys_path -o $out_path -n $n -e $e -w $w")}
+    # {"name": "c_pthreads", "cmd": Template(f"{algs_paths['c_pthread']} -c $linsys_path -o $out_path -n $n -t $t -e $e -w $w")},
+    # {"name": "c_omp", "cmd": Template(f"{algs_paths['c_omp']} -c $linsys_path -o $out_path -n $n -t $t -e $e -w $w")},
+    # {"name": "c_mpi", "cmd": Template(f"mpirun --use-hwthread-cpus -c $t {algs_paths['c_mpi']} -c $linsys_path -o $out_path -n $n -e $e -w $w")},
+    {"name": "python_mpi", "cmd": Template(f"mpirun --use-hwthread-cpus -c $t /usr/bin/python3 {algs_paths['python_mpi']} -c $linsys_path -o $out_path -n $n -e $e -w $w")}
 ]
 
 
@@ -75,6 +76,8 @@ def main():
         print(f"A|b = \n{Ab}")
         print(f"n = {n}\n")
         for instance_num in instance_nums:
+            if instance_num > n:
+                continue
             print(f"instance num = {instance_num}\n")
 
             for alg in algs:
