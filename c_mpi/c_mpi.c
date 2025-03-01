@@ -18,24 +18,6 @@
 
 #define MPI_SEND_E_TAG 1000
 
-#define MPI_WAIT_TIMEOUT 5
-
-#define MPI_WAIT_DEBUG(request, status, msg)                                  \
-    do {                                                                      \
-        time_t start_time = time(NULL);                                       \
-        int flag = 0;                                                         \
-        while (!flag) {                                                       \
-            MPI_Test(request, &flag, status);                                 \
-            if (time(NULL) - start_time > MPI_WAIT_TIMEOUT) {                 \
-                int rank;                                                     \
-                MPI_Comm_rank(MPI_COMM_WORLD, &rank);                         \
-                fprintf(stderr, "%s, MPI_Wait is hanging on rank %d!\n", msg, \
-                        rank);                                                \
-                break;                                                        \
-            }                                                                 \
-        }                                                                     \
-        MPI_Wait(request, status);                                            \
-    } while (0)
 
 struct global_ctx_s {
     int32_t i;
@@ -170,7 +152,25 @@ int count_digits(int n) {
     return (int)log10(abs(n)) + 1;
 }
 
-void populate_linear_system(struct global_ctx_s *gctx) {
+int populate_ab_from_file(struct global_ctx_s *gctx, char *path) {
+    FILE *f = fopen(path, "r");
+    if (f == NULL) {
+        perror("Filed to open file");
+        return -1;
+    }
+
+    for (int i = 0; i < gctx->n; i++) {
+        for (int j = 0; j < gctx->n; j++) {
+            fscanf(f, "%d", &gctx->A[i * gctx->n + j]);
+        }
+        fscanf(f, "%d", &gctx->b[i]);
+    }
+    fclose(f);
+
+    return 0;
+}
+
+int populate_ab(struct global_ctx_s *gctx) {
     uint32_t new_max;
 
     // srand(time(NULL));
@@ -191,6 +191,8 @@ void populate_linear_system(struct global_ctx_s *gctx) {
             }
         }
     }
+
+    return 0;
 }
 
 int init_gctx(struct global_ctx_s *gctx) {
@@ -216,7 +218,9 @@ int init_gctx(struct global_ctx_s *gctx) {
 }
 
 int main(int argc, char **argv) {
-    int ret, rank, size;
+    int ret, opt, rank, size;
+    char *linear_system_path = NULL;
+    char *linear_system_solve_path = NULL;
     double cur_max_e;
 
     MPI_Init(&argc, &argv);
@@ -225,12 +229,48 @@ int main(int argc, char **argv) {
 
     struct global_ctx_s gctx = {
         .n = 8, .max_e = 0.0000001, .i = 1, .w = 1.5, .run = 1};
+    
+    while ((opt = getopt(argc, argv, "hc:o:n:w:e:")) != -1) {
+        switch (opt) {
+            case 'h':
+                printf(
+                    "-c - file with linear system, -t - threads, -n - matrix "
+                    "size, -w - relax, -e - toler\n");
+                return 0;
+            case 'c':
+                linear_system_path = optarg;
+                break;
+            case 'o':
+                linear_system_solve_path = optarg;
+                break;
+            case 'n':
+                gctx.n = atoi(optarg);
+                break;
+            case 'w':
+                gctx.w = atof(optarg);
+                break;
+            case 'e':
+                gctx.max_e = atof(optarg);
+                break;
+
+            default:
+                return 1;
+        }
+    }
 
     ret = init_gctx(&gctx);
     if (ret < 0) return ret;
 
     if (rank == 0) {
-        populate_linear_system(&gctx);
+        if (linear_system_path != NULL)
+            ret = populate_ab_from_file(&gctx, linear_system_path);
+        else
+            ret = populate_ab(&gctx);
+
+        if (ret != 0) {
+            perror("Failed to populate linear system\n");
+            return ret;
+        }
     }
 
     MPI_Bcast(gctx.A, gctx.n * gctx.n, MPI_INT, 0, MPI_COMM_WORLD);
@@ -255,9 +295,23 @@ int main(int argc, char **argv) {
                    cur_max_e);
             printf("X: \n");
             for (int i = 0; i < gctx.n; i++) {
-                printf("%.2f ", gctx.X[i]);
+                printf("%.*f ", abs(log10(gctx.max_e)), gctx.X[i]);
             }
             printf("\n");
+            
+            if (linear_system_solve_path != NULL) {
+                FILE *f = fopen(linear_system_solve_path, "w");
+                if (f == NULL) {
+                    perror("Filed to open linear_system_solve_path");
+                    return -1;
+                }
+    
+                for (int i = 0; i < gctx.n; i++) {
+                    fprintf(f, "%.*f ", abs(log10(gctx.max_e)), gctx.X[i]);
+                }
+                fclose(f);
+            }
+
         } else {
             printf("Reach limit of iterations: %d", ITERATIONS_MAX);
         }

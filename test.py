@@ -4,6 +4,7 @@ import random
 import numpy as np
 from string import Template
 from typing import Dict, Union, List
+import math
 
 PARAM_ABS_MAX = 100
 
@@ -19,12 +20,15 @@ def module_path():
 
 algs_paths = {
         "c_pthread": os.path.join(module_path(), "c_pthreads", "build", "sor"),
-        "c_omp": os.path.join(module_path(), "c_omp", "build", "sor")
+        "c_omp": os.path.join(module_path(), "c_omp", "build", "sor"),
+        "c_mpi": os.path.join(module_path(), "c_mpi", "build", "sor"),
+        "c_mpi": os.path.join(module_path(), "c_mpi", "build", "sor"),
     }
 
 algs: List[Dict[str, Union[str,Template]]] = [
     {"name": "c_pthreads", "cmd": Template(f"{algs_paths['c_pthread']} -c $linsys_path -o $out_path -n $n -t $t -e $e -w $w")},
-    {"name": "c_omp", "cmd": Template(f"{algs_paths['c_omp']} -c $linsys_path -o $out_path -n $n -t $t -e $e -w $w")}
+    {"name": "c_omp", "cmd": Template(f"{algs_paths['c_omp']} -c $linsys_path -o $out_path -n $n -t $t -e $e -w $w")},
+    {"name": "c_mpi", "cmd": Template(f"mpirun --use-hwthread-cpus -c $t {algs_paths['c_mpi']} -c $linsys_path -o $out_path -n $n -e $e -w $w")}
 ]
 
 
@@ -58,7 +62,8 @@ def main():
     for i in range (0, len(ns)):
         n = ns[i]
         A, b = gen_linear_system(n)
-        linsys.append((A, b, np.linalg.solve(A, b)))
+        sol = np.linalg.solve(A, b)
+        linsys.append((A, b, np.round(sol, decimals=int(abs(math.log10(e))))))
         
         b = b.reshape(-1, 1)
         Ab = np.hstack((A, b))
@@ -73,11 +78,11 @@ def main():
             print(f"instance num = {instance_num}\n")
 
             for alg in algs:
-                print(f"Alg: {alg['name']}")
-
                 out_path = os.path.join(outs_dir, f"{alg['name']}_{n}_{instance_num}.txt")
-                cmd = alg["cmd"].substitute(linsys_path = linsys_path, out_path=out_path, n=n, t=instance_num, e=e, w=w).split()
-                result = subprocess.run(map(str, cmd), stdout=subprocess.DEVNULL)
+                cmd = alg["cmd"].substitute(linsys_path = linsys_path, out_path=out_path, n=n, t=instance_num, e=e, w=w)
+                
+                print(f"Alg: {alg['name']}\n{cmd}")
+                result = subprocess.run(map(str, cmd.split()), stdout=subprocess.DEVNULL)
                 
                 if result.returncode == 0:
                     with open(out_path, "r") as f:
