@@ -246,12 +246,12 @@ int main(int argc, char *argv[]) {
         } else if (cur_max_e < gctx.max_e) {
             atomic_store(&gctx.run, false);
         } else {
-            printf("X: \n");
-            for (int i = 0; i < gctx.n; i++) {
-                printf("%.2f ", gctx.X[i]);
-            }
-            printf("\n"); 
-            printf("%g\n", cur_max_e); 
+            // printf("X: \n");
+            // for (int i = 0; i < gctx.n; i++) {
+            //     printf("%.2f ", gctx.X[i]);
+            // }
+            // printf("\n"); 
+            // printf("%g\n", cur_max_e); 
         }
         atomic_fetch_add(&gctx.i, 1);
     }
@@ -272,7 +272,7 @@ int main(int argc, char *argv[]) {
             }
 
             for (int i = 0; i < gctx.n; i++) {
-                fprintf(f, "%f ", gctx.X[i]);
+                fprintf(f, "%.*f ", abs(log10(gctx.max_e)), gctx.X[i]);
             }
             fclose(f);
         }

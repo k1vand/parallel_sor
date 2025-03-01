@@ -81,8 +81,8 @@ double sor(struct global_ctx_s *gctx, double *solution_e) {
                     if (row_owner_rank != rank) {
                         MPI_Bcast(&gctx->X[i], 1, MPI_DOUBLE, row_owner_rank,
                                   MPI_COMM_WORLD);
-                        _debug("Get x%d %g from %d", i, gctx->X[i],
-                               row_owner_rank);
+                        // _debug("Get x%d %g from %d", i, gctx->X[i],
+                        //        row_owner_rank);
                     }
                 }
 
@@ -104,7 +104,7 @@ double sor(struct global_ctx_s *gctx, double *solution_e) {
                 for (int i = row + 1; i < gctx->n; i++) {
                     MPI_Bcast(&gctx->X[i], 1, MPI_DOUBLE, i % size,
                               MPI_COMM_WORLD);
-                    _debug("Get last x%d %g from %d", i, gctx->X[i], i % size);
+                    // _debug("Get last x%d %g from %d", i, gctx->X[i], i % size);
                 }
             }
         }
@@ -130,16 +130,16 @@ double sor(struct global_ctx_s *gctx, double *solution_e) {
                 *solution_e = cur_e_max;
             } else {
                 gctx->i++;
-                printf("X: \n");
-                for (int i = 0; i < gctx->n; i++) {
-                    printf("%.2f ", gctx->X[i]);
-                }
-                printf("\n");
+                // printf("X: \n");
+                // for (int i = 0; i < gctx->n; i++) {
+                //     printf("%.2f ", gctx->X[i]);
+                // }
+                // printf("\n");
             }
         }
 
         MPI_Bcast(&gctx->run, 1, MPI_INT, 0, MPI_COMM_WORLD);
-        if (rank == 0) _debug("Iteration: %d", gctx->i);
+        // if (rank == 0) _debug("Iteration: %d", gctx->i);
     }
 
     printf("Worker %d is finished\n", rank);

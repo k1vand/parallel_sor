@@ -98,13 +98,13 @@ void sor(struct global_ctx_s *gctx) {
                     printf("Get result for %d iterations, max e %g\n", gctx->i, cur_max_e);
                     gctx->i = - 1;
                 } else {
-                    printf("X: \n");
-                    for (int i = 0; i < gctx->n; i++)
-                    {
-                        printf("%.2f ", gctx->X[i]);
-                    }
-                    printf("\n");
-                    printf("%g\n", cur_max_e);
+                    // printf("X: \n");
+                    // for (int i = 0; i < gctx->n; i++)
+                    // {
+                    //     printf("%.2f ", gctx->X[i]);
+                    // }
+                    // printf("\n");
+                    // printf("%g\n", cur_max_e);
 
                     gctx->i++;
                 }
@@ -274,7 +274,7 @@ int main(int argc, char *argv[]) {
         }
 
         for (int i = 0; i < gctx.n; i++) {
-            fprintf(f, "%f ", gctx.X[i]);
+            fprintf(f, "%.*f ", abs(log10(gctx.max_e)), gctx.X[i]);
         }
         fclose(f);
     }
