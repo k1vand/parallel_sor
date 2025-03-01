@@ -23,8 +23,8 @@ algs_paths = {
     }
 
 algs: List[Dict[str, Union[str,Template]]] = [
-    # {"name": "c_pthreads", "cmd": Template(f"{algs_paths['c_pthread']} -c $linsys_path -o $out_path -n $n -e $e -w $w")},
-    {"name": "c_omp", "cmd": Template(f"{algs_paths['c_omp']} -c $linsys_path -o $out_path -n $n -e $e -w $w")}
+    {"name": "c_pthreads", "cmd": Template(f"{algs_paths['c_pthread']} -c $linsys_path -o $out_path -n $n -t $t -e $e -w $w")},
+    {"name": "c_omp", "cmd": Template(f"{algs_paths['c_omp']} -c $linsys_path -o $out_path -n $n -t $t -e $e -w $w")}
 ]
 
 
@@ -76,13 +76,13 @@ def main():
                 print(f"Alg: {alg['name']}")
 
                 out_path = os.path.join(outs_dir, f"{alg['name']}_{n}_{instance_num}.txt")
-                cmd = alg["cmd"].substitute(linsys_path = linsys_path, out_path=out_path, n=n, e=e, w=w).split()
+                cmd = alg["cmd"].substitute(linsys_path = linsys_path, out_path=out_path, n=n, t=instance_num, e=e, w=w).split()
                 result = subprocess.run(map(str, cmd), stdout=subprocess.DEVNULL)
                 
                 if result.returncode == 0:
                     with open(out_path, "r") as f:
                         solution = [float(x) for x in f.readline().split()]
-                        print(f"{alg['name']} solution \n{solution}")
+                        print(f"{os.path.basename(out_path)}, solution \n{solution}")
                         print(f"true solution \n{linsys[i][2].tolist()}")
 
                         l2_norm = np.linalg.norm(solution - linsys[i][2], ord=2)
