@@ -11,7 +11,7 @@
 #include <unistd.h>
 
 #define PARAM_ABS_MAX 100
-#define ITERATIONS_MAX 10000
+#define ITERATIONS_MAX 100000
 
 
 struct global_ctx_s {
@@ -211,14 +211,14 @@ int main(int argc, char *argv[]) {
         return ret;
     }
 
-    printf("Linear system n = %d: \n", gctx.n);
-    for (int i = 0; i < gctx.n; i++) {
-        for (int j = 0; j < gctx.n; j++) {
-            printf("%*d ", count_digits(PARAM_ABS_MAX), gctx.A[i][j]);
-        }
-        printf("%*d\n", count_digits(PARAM_ABS_MAX), gctx.b[i]);
-    }
-    printf("max e = %g, w = %g\n", gctx.max_e, gctx.w);
+    // printf("Linear system n = %d: \n", gctx.n);
+    // for (int i = 0; i < gctx.n; i++) {
+    //     for (int j = 0; j < gctx.n; j++) {
+    //         printf("%*d ", count_digits(PARAM_ABS_MAX), gctx.A[i][j]);
+    //     }
+    //     printf("%*d\n", count_digits(PARAM_ABS_MAX), gctx.b[i]);
+    // }
+    // printf("max e = %g, w = %g\n", gctx.max_e, gctx.w);
 
     for (int i = 0; i < gctx.threads_num; i++) {
         gctx.tctxs[i].gctx = &gctx;
@@ -258,11 +258,11 @@ int main(int argc, char *argv[]) {
 
     if (success) {
         printf("Get result for %d iterations, max e %g\n", gctx.i - 1, cur_max_e);
-        printf("X: \n");
-        for (int i = 0; i < gctx.n; i++) {
-            printf("%.2f ", gctx.X[i]);
-        }
-        printf("\n");
+        // printf("X: \n");
+        // for (int i = 0; i < gctx.n; i++) {
+        //     printf("%.2f ", gctx.X[i]);
+        // }
+        // printf("\n");
 
         if (linear_system_solve_path != NULL) {
             FILE *f = fopen(linear_system_solve_path, "w");

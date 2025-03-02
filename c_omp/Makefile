@@ -1,9 +1,9 @@
-CC = mpicc
-CFLAGS = -Wall -Wextra
-LDFLAGS = -lm
+CC = gcc
+CFLAGS = -Wall -Wextra -O3
+LDFLAGS = -lm -fopenmp
 BUILD_DIR = build
 TARGET = sor
-SRCS = c_mpi.c 
+SRCS = c_omp.c 
 
 OBJS = $(SRCS:%.c=$(BUILD_DIR)/%.o)
 
