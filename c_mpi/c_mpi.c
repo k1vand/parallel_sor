@@ -276,28 +276,28 @@ int main(int argc, char **argv) {
     MPI_Bcast(gctx.A, gctx.n * gctx.n, MPI_INT, 0, MPI_COMM_WORLD);
     MPI_Bcast(gctx.b, gctx.n, MPI_INT, 0, MPI_COMM_WORLD);
 
-    if (rank == 0) {
-        printf("Linear system n = %d: \n", gctx.n);
-        for (int i = 0; i < gctx.n; i++) {
-            for (int j = 0; j < gctx.n; j++) {
-                printf("%*d ", count_digits(PARAM_ABS_MAX),
-                       gctx.A[i * gctx.n + j]);
-            }
-            printf("%*d\n", count_digits(PARAM_ABS_MAX), gctx.b[i]);
-        }
-        printf("max e = %g, w = %g\n", gctx.max_e, gctx.w);
-    }
+    // if (rank == 0) {
+    //     printf("Linear system n = %d: \n", gctx.n);
+    //     for (int i = 0; i < gctx.n; i++) {
+    //         for (int j = 0; j < gctx.n; j++) {
+    //             printf("%*d ", count_digits(PARAM_ABS_MAX),
+    //                    gctx.A[i * gctx.n + j]);
+    //         }
+    //         printf("%*d\n", count_digits(PARAM_ABS_MAX), gctx.b[i]);
+    //     }
+    //     printf("max e = %g, w = %g\n", gctx.max_e, gctx.w);
+    // }
 
     ret = sor(&gctx, &cur_max_e);
     if (rank == 0) {
         if (ret == 0) {
             printf("Get result for %d iterations, max e %g\n", gctx.i,
                    cur_max_e);
-            printf("X: \n");
-            for (int i = 0; i < gctx.n; i++) {
-                printf("%.*f ", abs(log10(gctx.max_e)), gctx.X[i]);
-            }
-            printf("\n");
+            // printf("X: \n");
+            // for (int i = 0; i < gctx.n; i++) {
+            //     printf("%.*f ", abs(log10(gctx.max_e)), gctx.X[i]);
+            // }
+            // printf("\n");
             
             if (linear_system_solve_path != NULL) {
                 FILE *f = fopen(linear_system_solve_path, "w");
