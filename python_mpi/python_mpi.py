@@ -14,7 +14,6 @@ class SORTask:
         try:
             with open(path, "r") as f:
                 data = np.loadtxt(f, dtype=int)
-                print(data[:].size)
                 for i in range(0, self.n):
                     for j in range(0, self.n):
                         self.A[i][j] = data[i, j]
@@ -63,7 +62,7 @@ def sor(t: SORTask):
     print(f"Worker {rank} start, own rows num {own_rows_num}")
 
     while t.i[rank] > 0:
-        print(f"[{rank}] iteration №{t.i[rank]}")
+        # print(f"[{rank}] iteration №{t.i[rank]}")
         for row_i in range(0, own_rows_num):
             row =  rank + size * row_i
             old_X = t.X[row]
@@ -161,14 +160,14 @@ def main():
     comm.Bcast((task.A, MPI.INT), 0)
     comm.Bcast((task.b, MPI.INT), 0)
 
-    if rank == 0:
-        print(task.A)
-        print(task.b)
+    # if rank == 0:
+    #     print(task.A)
+    #     print(task.b)
 
     sor(task)
 
     if rank == 0:
-        print(task.X)
+        # print(task.X)
         
         if linear_system_solve_path is not None: 
             try:
