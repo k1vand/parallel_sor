@@ -271,10 +271,10 @@ int main(int argc, char *argv[]) {
                 return -1;
             }
 
-            // for (int i = 0; i < gctx.n; i++) {
-            //     fprintf(f, "%.*f ", abs(log10(gctx.max_e)), gctx.X[i]);
-            // }
-            // fclose(f);
+            for (int i = 0; i < gctx.n; i++) {
+                fprintf(f, "%.*f ", abs(log10(gctx.max_e)), gctx.X[i]);
+            }
+            fclose(f);
         }
     } else {
         printf("Failed to solve, reached iterations limit %d\n",
