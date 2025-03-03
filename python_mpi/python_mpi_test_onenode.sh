@@ -1,8 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=python_mpi_onenode_test
 #SBATCH --output=python_mpi_onenode_results.log
-#SBATCH --time=00:20:00
-#SBATCH --nodes=1      
+#SBATCH --time=00:20:00  
 #SBATCH --ntasks=4
 #SBATCH --ntasks-per-node=4   
 #SBATCH --cpus-per-task=1     
