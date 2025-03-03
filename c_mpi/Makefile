@@ -1,5 +1,5 @@
 CC = mpicc
-CFLAGS = -Wall -Wextra
+CFLAGS = -Wall -Wextra -O3
 LDFLAGS = -lm
 BUILD_DIR = build
 TARGET = sor
