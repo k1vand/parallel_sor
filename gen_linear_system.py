@@ -3,9 +3,9 @@ import numpy as np
 import random
 import time
 
-PARAM_ABS_MAX = 10000
+PARAM_ABS_MAX = 1000000
 
-def gen_linear_three_diagonal_system(n: int ):
+def gen_linear_three_diagonal_system(n: int, rel: float ):
     A = np.zeros((n, n), dtype=int)
     b = np.zeros((n), dtype=int)
     
@@ -13,9 +13,11 @@ def gen_linear_three_diagonal_system(n: int ):
         b[i] = np.random.randint(-PARAM_ABS_MAX, PARAM_ABS_MAX)
         
         A[i, i] = PARAM_ABS_MAX
-        A[i, i - 1] = (PARAM_ABS_MAX - 1) / -2 
+        nd = (rel * A[i,i]) // 2
+        if i != 0:
+            A[i, i - 1] = -nd
         if i + 1 < n:
-            A[i, i + 1] = (PARAM_ABS_MAX - 1) / -2 
+            A[i, i + 1] = -nd 
     
     return (A, b)
     
@@ -47,8 +49,12 @@ def write_linear_system_to_file(A, b, linsys_path, prefix=""):
 
 
 def main():
-    n = 200
-    A, b = gen_linear_three_diagonal_system(n)
+    n = 2000
+    A, b = gen_linear_three_diagonal_system(n, 0.00001)
+    write_linear_system_to_file(A,b, f"./linsys/{n}.txt")
+
+    n = 100
+    A, b = gen_linear_three_diagonal_system(n, 0.99999)
     write_linear_system_to_file(A,b, f"./linsys/{n}.txt")
 
 if __name__ == "__main__":
