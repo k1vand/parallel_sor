@@ -11,8 +11,10 @@
 #include <float.h>
 #include <omp.h>
 
+
 #define PARAM_ABS_MAX 100
 #define ITERATIONS_MAX 10000
+
 
 struct global_ctx_s {
     int i;
@@ -46,6 +48,10 @@ void sor(struct global_ctx_s *gctx) {
         #pragma omp atomic read
             gi = gctx->i;
         while(gi > 0) {
+            #ifdef DEBUG
+                printf("Thread %d Iteration #%d\n", idx, gi);
+            #endif
+            
             for (int row_i = 0; row_i < own_rows_num; row_i++)
             {
                 int row = idx + gctx->threads_num * row_i;
@@ -65,7 +71,7 @@ void sor(struct global_ctx_s *gctx) {
                     do {
                         #pragma omp atomic read
                             xii = gctx->Xi[i];
-                        sleep(0);
+                        continue;
                     } while (xii != gi);
                     
                     double xi;
@@ -104,8 +110,10 @@ void sor(struct global_ctx_s *gctx) {
                     //     printf("%.2f ", gctx->X[i]);
                     // }
                     // printf("\n");
-                    // printf("%g\n", cur_max_e);
-
+                    #ifdef DEBUG
+                    printf("%g\n", cur_max_e);
+                    #endif
+            
                     gctx->i++;
                 }
 

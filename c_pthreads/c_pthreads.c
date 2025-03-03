@@ -63,7 +63,7 @@ void *worker(struct tctx_s *tctx) {
 
             for (int i = row - 1; i >= 0; i--) {
                 while (atomic_load(&gctx->Xi[i]) != gi) {
-                    sleep(0);
+                    continue;
                 }
                 new_part -= A[row][i] * X[i];
             }
@@ -76,7 +76,7 @@ void *worker(struct tctx_s *tctx) {
         }
 
         while (atomic_load(&gctx->i) == gi) {
-            sleep(0);
+            continue;
         }
         gi = atomic_load(&gctx->i);
         run = atomic_load(&gctx->run);
@@ -227,13 +227,13 @@ int main(int argc, char *argv[]) {
         pthread_create(&gctx.threads[i], NULL, worker, &gctx.tctxs[i]);
     }
 
-    double cur_max_e;
+    double cur_max_e = 0;
     bool success = true;
     while (gctx.run) {
         cur_max_e = 0;
         for (int i = 0; i < gctx.n; i++) {
             while (atomic_load(&gctx.Xi[i]) != gctx.i) {
-                sleep(0);
+                continue;
             }
 
             if (cur_max_e < atomic_load(&gctx.e[i]))
@@ -271,10 +271,10 @@ int main(int argc, char *argv[]) {
                 return -1;
             }
 
-            for (int i = 0; i < gctx.n; i++) {
-                fprintf(f, "%.*f ", abs(log10(gctx.max_e)), gctx.X[i]);
-            }
-            fclose(f);
+            // for (int i = 0; i < gctx.n; i++) {
+            //     fprintf(f, "%.*f ", abs(log10(gctx.max_e)), gctx.X[i]);
+            // }
+            // fclose(f);
         }
     } else {
         printf("Failed to solve, reached iterations limit %d\n",
