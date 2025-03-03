@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=python_mpi_multinode_test
 #SBATCH --output=python_mpi_multinodes_results.log
-#SBATCH --time=00:20:00  
+#SBATCH --time=00:40:00  
 #SBATCH --ntasks=4
 #SBATCH --ntasks-per-node=1   
 #SBATCH --cpus-per-task=1     
@@ -23,7 +23,7 @@ RESULTS_FILE="python_mpi_multinodes_results.csv"
 echo "nodes;time_ms" > $RESULTS_FILE
 
 
-REPEATS=100 
+REPEATS=3 
 
 for INSTANCES in {1..4}; do
     echo "$INSTANCES nodes"
