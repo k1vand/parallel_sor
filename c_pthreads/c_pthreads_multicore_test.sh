@@ -4,7 +4,7 @@
 #SBATCH --time=00:20:00
 #SBATCH --nodes=1      
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=4     
+#SBATCH --cpus-per-task=5     
 #SBATCH --mem=2G
 #SBATCH --partition=tornado
 
@@ -14,7 +14,7 @@ OUTS="$HOME_DIR/outs"
 C_OMP_DIR="$HOME_DIR/c_pthreads"
 
 W=1.5
-N=300
+N=2000
 E=0.000000000001
 
 RESULTS_FILE="c_pthreads_multicore_results.csv"
@@ -32,7 +32,6 @@ for INSTANCES in {1..4}; do
         "$C_OMP_DIR/build/sor"  \
             -t $INSTANCES \
             -c "$LINSYS/${N}.txt" \
-            -o "$OUTS/c_pthreads_${N}_${INSTANCES}.txt" \
             -n $N -e $E -w $W
 
         END_TIME=$(date +%s%3N) 

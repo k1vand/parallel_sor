@@ -14,7 +14,7 @@ OUTS="$HOME_DIR/outs"
 C_OMP_DIR="$HOME_DIR/c_pthreads"
 
 W=1.5
-N=300
+N=2000
 E=0.000000000001
 
 RESULTS_FILE="c_pthreads_one_core_results.csv"
@@ -32,7 +32,6 @@ for INSTANCES in {1..4}; do
         "$C_OMP_DIR/build/sor"  \
             -t $INSTANCES \
             -c "$LINSYS/${N}.txt" \
-            -o "$OUTS/c_pthreads_${N}_${INSTANCES}.txt" \
             -n $N -e $E -w $W
 
         END_TIME=$(date +%s%3N) 

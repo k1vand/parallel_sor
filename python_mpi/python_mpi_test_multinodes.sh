@@ -15,7 +15,7 @@ OUTS="$HOME_DIR/outs"
 PYTHON_MPI_DIR="$HOME_DIR/python_mpi"
 
 W=1.5
-N=300
+N=2000
 E=0.000000000001
 
 module load python/3.12 
@@ -23,19 +23,27 @@ module load python/3.12
 RESULTS_FILE="python_mpi_multinodes_results.csv"
 echo "nodes;time_ms" > $RESULTS_FILE
 
-for NODES in {1..4}; do
-    echo "$NODES nodes"
+
+REPEATS=100 
+
+for INSTANCES in {1..4}; do
+    echo "$INSTANCES nodes"
+    TOTAL_TIME=0
     
-    START_TIME=$(date +%s%3N) 
+    for ((i=1; i<=REPEATS; i++)); do
+        START_TIME=$(date +%s%3N) 
 
-    mpirun -np $NODES  python3.12 "$PYTHON_MPI_DIR/python_mpi.py"  \
+        mpirun -np $INSTANCES  python3.12 "$PYTHON_MPI_DIR/python_mpi.py"  \
         -c "$LINSYS/${N}.txt" \
-        -o "$OUTS/c_mpi_${N}_${NODES}.txt" \
         -n $N -e $E -w $W
-
-    END_TIME=$(date +%s%3N) 
-    RUNTIME=$((END_TIME - START_TIME))
-
-    echo "$NODES;$RUNTIME" >> $RESULTS_FILE
-    echo "runtime: $RUNTIME ms"
+        
+        END_TIME=$(date +%s%3N) 
+        RUNTIME=$((END_TIME - START_TIME))
+        TOTAL_TIME=$((TOTAL_TIME + RUNTIME))
+        echo "Run $i: $RUNTIME ms"
+    done
+    
+    AVG_TIME=$((TOTAL_TIME / REPEATS))
+    echo "$INSTANCES;$AVG_TIME" >> $RESULTS_FILE
+    echo "Average runtime: $AVG_TIME ms"
 done
